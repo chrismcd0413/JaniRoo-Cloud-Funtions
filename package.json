@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "firebase-functions": "^3.21.2",
     "moment": "^2.29.3",
     "moment-timezone": "^0.5.34"
   }

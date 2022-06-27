@@ -156,17 +156,33 @@ exports.updateHoursWorkedOnUpdate = functions.firestore
     .document("Timesheets/{tsId}")
     .onUpdate((event, context) => {
       const data = event.after.data();
-      if (data.clock_in_time && data.clock_out_time) {
-        const inTime = data.clock_in_time.toMillis();
-        const outTime = data.clock_out_time.toMillis();
-        const inMoment = moment(inTime);
-        const outMoment = moment(outTime);
-        const hoursWorked =
-        Math.round((outMoment.diff(inMoment, "minutes") / 60) * 100) / 100;
-        return event.after.ref.update({hrs_worked: hoursWorked});
-      } else {
-        return null;
-      }
+      let queryStart;
+      let queryEnd;
+      let inTime;
+      let outTime;
+      let hoursWorked;
+      return admin.firestore().collection("Accounts").doc(data.location.acct).get()
+          .then((a) => {
+            const location = a.data().locations.find((x) => x.id === data.location.loc);
+            functions.logger.debug("Found Location: ", location);
+            functions.logger.debug("Found Account: ", a.data());
+            functions.logger.debug("Updated TS: ", data);
+            if (data.clock_in_time) {
+              queryStart = generateQueryDateFirestore(moment(data.clock_in_time.toMillis()), location.address.tzId);
+            }
+            if (data.clock_out_time) {
+              queryEnd = generateQueryDateFirestore(moment(data.clock_out_time.toMillis()), location.address.tzId);
+            }
+            if (data.clock_in_time && data.clock_out_time) {
+              inTime = data.clock_in_time.toMillis();
+              outTime = data.clock_out_time.toMillis();
+              const inMoment = moment(inTime);
+              const outMoment = moment(outTime);
+              hoursWorked =
+              Math.round((outMoment.diff(inMoment, "minutes") / 60) * 100) / 100;
+            }
+            event.after.ref.update({hrs_worked: hoursWorked, query_start: queryStart, query_end: queryEnd});
+          });
     });
 exports.syncRecurringChecklists = functions.firestore
     .document("Checklist Templates/{templateId}")
